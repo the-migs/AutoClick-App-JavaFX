@@ -2,12 +2,12 @@ package org.all;
 
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
+import javafx.scene.input.InputEvent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -16,17 +16,90 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import com.github.kwhat.jnativehook.GlobalScreen;
+import com.github.kwhat.jnativehook.NativeHookException;
+import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;
+import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
+
+import java.awt.*;
+
 //obrigatorio extender de Application
 public class Main extends Application {
+    private static volatile int repetitions = 100;
+    private static volatile int timeBeforePlay;
+    private static volatile int keyCode;
+    private static volatile String keyName;
+    private static volatile boolean playMusic = true;
+    private static volatile boolean checkThreadAutoClick = false;
+    protected static volatile boolean running = true;
+    protected static volatile boolean checkPlayButtonAutoClick = false;
+    static volatile boolean hotkeyDown = false;
+    static volatile boolean KILLPORRA = false;
+    private static Robot robot;
     private boolean captureKey = false;
-    private volatile int repetitions = 0;
-    private volatile int timeBeforePlay = 0;
-    private volatile boolean playMusic = true;
+    private boolean capturing = false;
+    protected Thread threadAutoClick;
 
-    // metodo responsavel por construir tudo
-    // Stage stage -> tela inicial do aplicativo
+    protected void metodThreadAutoClick(){
+        threadAutoClick = new Thread(() -> {
+            checkPlayButtonAutoClick = true;
+            running = true;
+            while (running) {
+                if(!checkThreadAutoClick) {
+                    checkThreadAutoClick = true;
+                    try {
+                        Thread.sleep(timeBeforePlay);
+                        for (int i = 0; i < repetitions && running; i++) {
+                            try {
+                                robot.mousePress(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
+                                Thread.sleep(6);
+                                robot.mouseRelease(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } finally {
+                        running = false;
+                        checkThreadAutoClick = false;
+                        checkPlayButtonAutoClick = false;
+                    }
+                }
+            }
+        });
+        if(!checkThreadAutoClick) {threadAutoClick.start();}
+    }
+
     @Override
     public void start(Stage stage) {
+        try {
+            GlobalScreen.registerNativeHook();
+        } catch (NativeHookException e) {
+            e.printStackTrace();
+        }
+
+        stage.setOnCloseRequest(event -> {
+            // ao fechar o app, "mata" a thread de forma segura
+            // running fica false e ela fecha sozinha
+            // se estiver dormindo o interrupt manda um InterruptedException e a Thread sai imediatamente
+           running = false;
+           if (threadAutoClick != null && threadAutoClick.isAlive()) {
+               threadAutoClick.interrupt();
+           }
+
+           // desliga o JNativeHook
+           try{
+               GlobalScreen.unregisterNativeHook();
+           } catch (NativeHookException e) {
+               e.printStackTrace();
+           }
+
+           // encerra a javafx
+           javafx.application.Platform.exit();
+           // garante que tudo feche mesmo
+           System.exit(0);
+        });
 
         HBox soundHBox = new HBox();
         soundHBox.setSpacing(4);
@@ -55,7 +128,6 @@ public class Main extends Application {
         StackPane rootStackPane = new StackPane();
         StackPane.setAlignment(rootStackPane, Pos.TOP_LEFT);
 
-
         // deixa os componentes no centro
         centerVBOX.setAlignment(Pos.CENTER);
         //espacamento entre os componentes
@@ -63,10 +135,76 @@ public class Main extends Application {
         Button setKeyButton = new Button("Set Key: F6");
         // define o estilo do botao com base na classe CSS
         setKeyButton.getStyleClass().add("button-all");
-        // muda o texto e torna true a variavel que vai ativar o if do scene
-        setKeyButton.setOnAction(event -> {
+
+        setKeyButton.setOnAction(e -> {
+            if (capturing) return;
+            capturing = true;
+
             setKeyButton.setText("Press a key...");
-            captureKey = true;
+
+            NativeKeyListener tempListener = new NativeKeyListener() {
+                @Override
+                public void nativeKeyReleased(NativeKeyEvent ev) {
+                    keyCode = ev.getKeyCode();
+                    keyName = NativeKeyEvent.getKeyText(keyCode);
+
+                    javafx.application.Platform.runLater(() -> {
+                        setKeyButton.setText("Key defined: " + keyName);
+                    });
+
+                    GlobalScreen.removeNativeKeyListener(this);
+                    capturing = false;
+                }
+            };
+
+            GlobalScreen.addNativeKeyListener(tempListener);
+        });
+
+        GlobalScreen.addNativeKeyListener(new NativeKeyListener() {
+
+            @Override
+            public void nativeKeyPressed(NativeKeyEvent event) {
+                if (event.getKeyCode() != keyCode) return;
+
+                // evita repetir enquanto a tecla está segurada
+                if (hotkeyDown) return;
+                hotkeyDown = true;
+
+                if (checkThreadAutoClick) {
+                    checkThreadAutoClick = false;
+                    checkPlayButtonAutoClick = false;
+                    running = false;
+                    if (threadAutoClick != null) threadAutoClick.interrupt();
+                } else {
+                    if (!checkPlayButtonAutoClick) {
+                        metodThreadAutoClick();
+                    }
+                }
+            }
+
+            @Override
+            public void nativeKeyReleased(NativeKeyEvent event) {
+                if (event.getKeyCode() == keyCode) {
+                    hotkeyDown = false; // libera pra próxima vez
+                }
+            }
+        });
+
+        Button playAutoClickButton = new Button("Play AutoClick");
+        playAutoClickButton.setPrefHeight(50);
+        playAutoClickButton.setPrefWidth(200);
+        playAutoClickButton.getStyleClass().add("button-all");
+        playAutoClickButton.setOnAction(event -> {
+            metodThreadAutoClick();
+        });
+
+        Button stopAutoClickButton = new Button("Stop AutoClick");
+        stopAutoClickButton.getStyleClass().add("button-all");
+        stopAutoClickButton.setOnAction(event -> {
+            running = false;
+            checkThreadAutoClick = false;
+            checkPlayButtonAutoClick = false;
+            threadAutoClick.interrupt();
         });
 
         GridPane configGridPane = new GridPane();
@@ -99,30 +237,10 @@ public class Main extends Application {
         configGridPane.add(timeBeforePlayLabel, 0, 1);
         configGridPane.add(timeBeforePlaySpinner, 1, 1);
 
-        Button playAutoClickButton = new Button("Play AutoClick");
-        playAutoClickButton.setPrefHeight(50);
-        playAutoClickButton.setPrefWidth(200);
-        playAutoClickButton.getStyleClass().add("button-all");
-        playAutoClickButton.setOnAction(event -> {
-        });
-
-        Button stopAutoClickButton = new Button("Stop AutoClick");
-        stopAutoClickButton.getStyleClass().add("button-all");
-        stopAutoClickButton.setOnAction(event -> {});
-
         rootStackPane.getChildren().addAll(centerVBOX, soundHBox);
         // scene -> conteudo de dentro da janela, guarda toda a arvore visual
         // Scene(centerVBOX, 400, 400) - > define layout e tamanho
         Scene scene = new Scene(rootStackPane, 550, 550);
-
-        // vai capturar a tecla precionada, mudar o texto do botao setKey e tornar false a variavel q ativa o proprio if
-        scene.setOnKeyPressed(event -> {
-           if (captureKey) {
-               KeyCode keyCode = event.getCode();
-               setKeyButton.setText("Set Key: " + keyCode.getName());
-               captureKey = false;
-           }
-        });
 
         // Adiciona os botoes
         centerVBOX.getChildren().addAll(setKeyButton, playAutoClickButton, stopAutoClickButton, configGridPane);
@@ -162,11 +280,12 @@ public class Main extends Application {
     }
 
     public static void main(String[] args) {
-        launch();
-    }
-}
-class AutoClick{
-    private void metodAutoClick(){
+        try{
+            robot = new Robot();
+        } catch (AWTException e){
+            e.printStackTrace();
+        }
 
+        launch();
     }
 }
