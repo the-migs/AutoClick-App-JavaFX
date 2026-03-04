@@ -2,43 +2,51 @@ package org.all;
 
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.geometry.Side;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.Spinner;
-import javafx.scene.input.InputEvent;
-import javafx.scene.input.KeyCode;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 
 import com.github.kwhat.jnativehook.GlobalScreen;
 import com.github.kwhat.jnativehook.NativeHookException;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 
-import java.awt.*;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
+import java.awt.Robot;
+import java.awt.AWTException;
+import java.nio.file.Paths;
+import java.util.List;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 //obrigatorio extender de Application
 public class Main extends Application {
     private static volatile int repetitions = 100;
     private static volatile int timeBeforePlay;
-    private static volatile int keyCode;
+    private static volatile int keyCode = NativeKeyEvent.VC_F6;
     private static volatile String keyName;
     private static volatile boolean playMusic = true;
     private static volatile boolean checkThreadAutoClick = false;
     protected static volatile boolean running = true;
     protected static volatile boolean checkPlayButtonAutoClick = false;
     static volatile boolean hotkeyDown = false;
-    static volatile boolean KILLPORRA = false;
     private static Robot robot;
-    private boolean captureKey = false;
     private boolean capturing = false;
     protected Thread threadAutoClick;
+    private Music music;
+    protected static Number newVolum;
 
     protected void metodThreadAutoClick(){
         threadAutoClick = new Thread(() -> {
@@ -73,6 +81,9 @@ public class Main extends Application {
 
     @Override
     public void start(Stage stage) {
+        music = new Music();
+        music.start();
+
         try {
             GlobalScreen.registerNativeHook();
         } catch (NativeHookException e) {
@@ -102,31 +113,195 @@ public class Main extends Application {
         });
 
         HBox soundHBox = new HBox();
+        soundHBox.setPadding(new Insets(3   ,0,0,3));
         soundHBox.setSpacing(4);
         soundHBox.setPickOnBounds(false);
-        Button returnButton = new Button("<<");
-        returnButton.getStyleClass().add("button-all");
-        Button playButton = new Button("No dance");
-        playButton.setOnAction(e -> {
-            if (playMusic) {
-                playButton.setText("Dance");
-                playMusic = false;
-            }
-            else {
-                playButton.setText("No dance");
-                playMusic = true;
+
+        Image configIcon = new Image(getClass().getResource("/imagens/configs.gif").toExternalForm());
+        ImageView configIconView = new ImageView(configIcon);
+        configIconView.setFitHeight(55);
+        configIconView.setFitWidth(55);
+        configIconView.setPreserveRatio(true);
+
+        Image namesIcon = new Image(getClass().getResource("/imagens/names.png").toExternalForm());
+        ImageView namesIconView = new ImageView(namesIcon);
+        namesIconView.setFitHeight(15);
+        namesIconView.setFitWidth(15);
+
+        Image playIcon = new Image(getClass().getResource("/imagens/play.png").toExternalForm());
+        ImageView playIconView = new ImageView(playIcon);
+        playIconView.setFitWidth(15);
+        playIconView.setFitHeight(15);
+
+        Image stopIcon = new Image(getClass().getResource("/imagens/pause.png").toExternalForm());
+        ImageView stopIconView = new ImageView(stopIcon);
+        stopIconView.setFitWidth(15);
+        stopIconView.setFitHeight(15);
+
+        Image returnIcon = new Image(getClass().getResource("/imagens/return.png").toExternalForm());
+        ImageView returnIconView = new ImageView(returnIcon);
+        returnIconView.setFitWidth(15);
+        returnIconView.setFitHeight(15);
+
+        Image return10sIcon = new Image(getClass().getResource("/imagens/return_10s.png").toExternalForm());
+        ImageView return10sIconView = new ImageView(return10sIcon);
+        return10sIconView.setFitWidth(15);
+        return10sIconView.setFitHeight(15);
+
+        Image skip10sIcon = new Image(getClass().getResource("/imagens/skip_10s.png").toExternalForm());
+        ImageView skip10sIconView = new ImageView(skip10sIcon);
+        skip10sIconView.setFitWidth(15);
+        skip10sIconView.setFitHeight(15);
+
+        Image skipIcon = new Image(getClass().getResource("/imagens/skip.png").toExternalForm());
+        ImageView skipIconView = new ImageView(skipIcon);
+        skipIconView.setFitWidth(15);
+        skipIconView.setFitHeight(15);
+
+        Image volumMaxIcon = new Image(getClass().getResource("/imagens/volumMax.png").toExternalForm());
+        ImageView volumMaxIconView = new ImageView(volumMaxIcon);
+        volumMaxIconView.setFitWidth(15);
+        volumMaxIconView.setFitHeight(15);
+
+        Image volumMedianIcon = new Image(getClass().getResource("/imagens/volumMedian.png").toExternalForm());
+        ImageView volumMedianIconView = new ImageView(volumMedianIcon);
+        volumMedianIconView.setFitWidth(15);
+        volumMedianIconView.setFitHeight(15);
+
+        Image volumeLittleIconView = new Image(getClass().getResource("/imagens/volumeLow.png").toExternalForm());
+        ImageView volumLowIconView = new ImageView(volumeLittleIconView);
+        volumLowIconView.setFitWidth(15);
+        volumLowIconView.setFitHeight(15);
+
+        Image muteMusicIcon = new Image(getClass().getResource("/imagens/muteMusic.png").toExternalForm());
+        ImageView muteMusicIconView = new ImageView(muteMusicIcon);
+        muteMusicIconView.setFitWidth(15);
+        muteMusicIconView.setFitHeight(15);
+
+        Button configButton = new Button();
+        configButton.setGraphic(configIconView);
+        configButton.getStyleClass().add("etc");
+
+        configButton.pressedProperty().addListener((obs, oldVal, pressed) -> {
+            if (pressed) {
+                configIconView.setScaleX(0.9);
+                configIconView.setScaleY(0.9);
+            } else {
+                configIconView.setScaleX(1);
+                configIconView.setScaleY(1);
             }
         });
 
-        playButton.getStyleClass().add("button-all");
-        Button skipButton = new Button(">>");
+        HBox configHBox = new HBox();
+        configHBox.setPadding(new Insets(8,0,0,3));
+        configHBox.setPickOnBounds(false);
+
+        configHBox.setAlignment(Pos.TOP_LEFT);
+
+        configHBox.getChildren().add(configButton);
+
+        Button namesButton = new Button();
+        namesButton.setGraphic(namesIconView);
+        namesButton.getStyleClass().add("button-all");
+
+        Label namesLabel = new Label("Vanished (Slowed) by mkl\nPure Imagination Orchestra by Adonal Michel");
+
+        CustomMenuItem namesItem = new CustomMenuItem(namesLabel, false);
+        ContextMenu namesResult = new ContextMenu(namesItem);
+        namesResult.getStyleClass().add("names-menu");
+
+        namesButton.setOnAction(e -> {
+            if(namesResult.isShowing()) {
+                namesResult.hide();
+            } else {
+                namesResult.show(namesButton, Side.BOTTOM, 0,0);
+            }
+        });
+
+        Button skipButton = new Button();
+        skipButton.setGraphic(skipIconView);
         skipButton.getStyleClass().add("button-all");
-        soundHBox.getChildren().addAll(returnButton, playButton, skipButton);
+        skipButton.setOnAction(event -> {
+           music.next();
+        });
+
+        Button skip10sButton = new Button();
+        skip10sButton.setGraphic(skip10sIconView);
+        skip10sButton.getStyleClass().add("button-all");
+        skip10sButton.setOnAction(event -> {
+            music.skip10s();
+        });
+
+        Button returnButton = new Button();
+        returnButton.setGraphic(returnIconView);
+        returnButton.getStyleClass().add("button-all");
+        returnButton.setOnAction(event -> {
+            music.returnMusic();
+        });
+
+        Button return10sButton = new Button();
+        return10sButton.setGraphic(return10sIconView);
+        return10sButton.getStyleClass().add("button-all");
+        return10sButton.setOnAction(event -> {
+            music.return10s();
+        });
+
+        Button playAndStopButton = new Button();
+        playAndStopButton.setGraphic(stopIconView);
+        playAndStopButton.setOnAction(e -> {
+            if (playMusic) {
+                playAndStopButton.setGraphic(playIconView);
+                playMusic = false;
+                music.pause();
+            }
+            else {
+                playAndStopButton.setGraphic(stopIconView);
+                playMusic = true;
+                music.play();
+            }
+        });
+        playAndStopButton.getStyleClass().add("button-all");
+
+        Button volumeBtn = new Button();
+        volumeBtn.setGraphic(volumMedianIconView);
+        volumeBtn.getStyleClass().add("button-all");
+
+        Slider volumeSlider = new Slider(0,1,0.2);
+        music.volume(0.2);
+        volumeSlider.setFocusTraversable(false);
+        volumeSlider.setPrefWidth(110);
+
+        volumeSlider.valueProperty().addListener((ov, oldV, newV) -> {
+            newVolum = newV;
+            if(newV != null){
+                music.volume(newV);
+            } else {
+                music.volume(0.2);
+            }
+            if(newV.doubleValue() > 0.5 && newV != null) {volumeBtn.setGraphic(volumMaxIconView);}
+            if(newV.doubleValue() < 0.5 && newV.doubleValue() > 0.2 && newV != null) {volumeBtn.setGraphic(volumMedianIconView);}
+            if(newV.doubleValue() < 0.2 && newV.doubleValue() > 0.0 && newV != null) {volumeBtn.setGraphic(volumLowIconView);}
+            if(newV.doubleValue() == 0.0 && newV != null) {volumeBtn.setGraphic(muteMusicIconView);}
+        });
+
+        CustomMenuItem sliderItem = new CustomMenuItem(volumeSlider, false);
+        ContextMenu volumMenu = new ContextMenu(sliderItem);
+
+        volumeBtn.setOnAction(e -> {
+            if(volumMenu.isShowing()) {
+                volumMenu.hide();
+            } else{
+                volumMenu.show(volumeBtn, Side.RIGHT, 2,7);
+            }
+        });
+
+        soundHBox.getChildren().addAll(namesButton,returnButton, return10sButton, playAndStopButton, skip10sButton, skipButton, volumeBtn);
         // Layout e container
         VBox centerVBOX = new VBox();
 
         StackPane rootStackPane = new StackPane();
-        StackPane.setAlignment(rootStackPane, Pos.TOP_LEFT);
+        StackPane.setAlignment(rootStackPane, Pos.TOP_CENTER);
+        soundHBox.setAlignment(Pos.TOP_CENTER);
 
         // deixa os componentes no centro
         centerVBOX.setAlignment(Pos.CENTER);
@@ -222,25 +397,29 @@ public class Main extends Application {
         Spinner<Integer> repetitionsSpinner = new Spinner<>(0, 999999999, 1000);
         // permite ser editavel
         repetitionsSpinner.setEditable(true);
-        // pega o valor
-        repetitions = repetitionsSpinner.getValue();
+        repetitionsSpinner.valueProperty().addListener((observable, oldValue, newValue) -> {
+            repetitions = newValue;
+        });
 
         Label timeBeforePlayLabel = new Label("Seconds before starting:");
         timeBeforePlayLabel.getStyleClass().add("label-all");
 
         Spinner<Integer> timeBeforePlaySpinner = new Spinner<>(0, 999999999, 0);
         timeBeforePlaySpinner.setEditable(true);
-        timeBeforePlay = (timeBeforePlaySpinner.getValue()) * 1000;
+        timeBeforePlaySpinner.valueProperty().addListener((observable, oldValue, newValue) -> {
+            timeBeforePlay = newValue * 1000;
+        });
 
         configGridPane.add(repetitionsLabel, 0, 0);
         configGridPane.add(repetitionsSpinner, 1, 0);
         configGridPane.add(timeBeforePlayLabel, 0, 1);
         configGridPane.add(timeBeforePlaySpinner, 1, 1);
 
-        rootStackPane.getChildren().addAll(centerVBOX, soundHBox);
+        rootStackPane.getChildren().addAll(centerVBOX, configHBox, soundHBox);
         // scene -> conteudo de dentro da janela, guarda toda a arvore visual
         // Scene(centerVBOX, 400, 400) - > define layout e tamanho
         Scene scene = new Scene(rootStackPane, 550, 550);
+
 
         // Adiciona os botoes
         centerVBOX.getChildren().addAll(setKeyButton, playAutoClickButton, stopAutoClickButton, configGridPane);
@@ -262,6 +441,8 @@ public class Main extends Application {
         stage.centerOnScreen();
         // mostra a janela
         stage.show();
+
+        music.play();
 
         // deixa o JavaFX + WM assentarem tamanho/decoração
         // espera 20 ms
@@ -288,4 +469,91 @@ public class Main extends Application {
 
         launch();
     }
+}
+
+class Music {
+    private MediaPlayer mediaPlayer;
+    private List<Path> playlist;
+    private int index = 0;
+
+    public Music() {
+        try {
+            Path pasta = Paths.get("musics");
+            playlist = Files.list(pasta)
+                    .filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".mp3"))
+                    .sorted()
+                    .toList();
+
+            System.out.println("Qtd músicas: " + playlist.size());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void start() {
+        if (playlist == null || playlist.isEmpty()) return;
+        playIndex(index);
+    }
+
+    private void playIndex(int i) {
+
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            // libera recursos nativos, evita “vazamento” de recursos
+            // evita comportamento estranho ao trocar de música (como não tocar a próxima)
+            mediaPlayer.dispose();
+
+        }
+        // pega o caminho da musica da vez
+        Path file = playlist.get(i);
+
+        // file.toUri().toString() -> O construtor de Media precisa de uma String em formato URI tipo:
+        // file:/home/the-migs/.../DarkBeach.mp3
+        mediaPlayer = new MediaPlayer(new Media(file.toUri().toString()));
+
+        // sempre que a musica acaba, chama o next
+        mediaPlayer.setOnEndOfMedia(this::next);
+
+        mediaPlayer.setOnError(() -> System.out.println("Player erro: " + mediaPlayer.getError()));
+        mediaPlayer.play();
+
+        System.out.println("Tocando: " + file.getFileName());
+    }
+
+    public void next() {
+        if (playlist == null || playlist.isEmpty()) return;
+        // % -> retorna zero se chegar no final da playlist
+        index = (index + 1) % playlist.size();
+        playIndex(index);
+        if(Main.newVolum != null) {volume(Main.newVolum);}
+        else {volume(0.2);}
+    }
+    public void returnMusic() {
+        if (playlist == null || playlist.isEmpty()) return;
+        // index = (index - 1 + playlist.size()) % playlist.size();
+        index = (index - 1) % playlist.size();
+        if(index < 0) index = 0;
+        playIndex(index);
+        if(Main.newVolum != null) {volume(Main.newVolum);}
+        else {volume(0.2);}
+    }
+    protected void return10s() {
+        if (playlist == null || playlist.isEmpty()) return;
+        Duration newTime = mediaPlayer.getCurrentTime().subtract(Duration.seconds(10));
+        mediaPlayer.seek(newTime);
+    }
+    protected void skip10s() {
+        if (playlist == null || playlist.isEmpty()) return;
+        Duration newTime = mediaPlayer.getCurrentTime().add(Duration.seconds(10));
+        mediaPlayer.seek(newTime);
+    }
+
+    protected void volume(Number newV) {
+        if (playlist == null || playlist.isEmpty() || mediaPlayer == null) return;
+        mediaPlayer.setVolume(newV.doubleValue());
+    }
+
+    public void pause() { if (mediaPlayer != null) mediaPlayer.pause(); }
+    public void play()  { if (mediaPlayer != null) mediaPlayer.play(); }
 }
