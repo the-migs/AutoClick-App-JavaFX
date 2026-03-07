@@ -7,6 +7,8 @@ import javafx.geometry.Pos;
 import javafx.geometry.Side;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
@@ -23,66 +25,226 @@ import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
-import java.awt.Robot;
-import java.awt.AWTException;
+
+import java.awt.*;
 import java.nio.file.Paths;
 import java.util.List;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 
 //obrigatorio extender de Application
 public class Main extends Application {
-    private static volatile int repetitions = 100;
-    private static volatile int timeBeforePlay;
     private static volatile int keyCode = NativeKeyEvent.VC_F6;
     private static volatile String keyName;
-    private static volatile boolean playMusic = true;
-    private static volatile boolean checkThreadAutoClick = false;
-    protected static volatile boolean running = true;
-    protected static volatile boolean checkPlayButtonAutoClick = false;
+    private static volatile boolean playMusic = false;
     static volatile boolean hotkeyDown = false;
-    private static Robot robot;
     private boolean capturing = false;
-    protected Thread threadAutoClick;
     private Music music;
     protected static Number newVolum;
 
-    protected void metodThreadAutoClick(){
-        threadAutoClick = new Thread(() -> {
-            checkPlayButtonAutoClick = true;
-            running = true;
-            while (running) {
-                if(!checkThreadAutoClick) {
-                    checkThreadAutoClick = true;
-                    try {
-                        Thread.sleep(timeBeforePlay);
-                        for (int i = 0; i < repetitions && running; i++) {
-                            try {
-                                robot.mousePress(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
-                                Thread.sleep(6);
-                                robot.mouseRelease(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } finally {
-                        running = false;
-                        checkThreadAutoClick = false;
-                        checkPlayButtonAutoClick = false;
-                    }
+    private static volatile int repetitions = 5000;
+    private static volatile int timeBeforePlay = 0;
+    private static volatile int clickSpeed = 6;
+    private static volatile boolean antiAFK = false;
+    private static volatile int pauseMove = 10000;
+
+    private static Robot robot;
+    private static Robot robotMove;
+    protected Thread threadAutoClick;
+    protected Thread threadMove;
+
+    protected static volatile boolean running = false;
+    protected static volatile boolean checkPlayButtonAutoClick = false;
+    private static volatile boolean checkThreadAutoClick = false;
+    private volatile boolean checkThreadMove = false;
+    private final Object robotLock = new Object();
+
+    protected void warmUp() {
+        try {
+            robot.setAutoDelay(0);
+
+            tapKey(KeyEvent.VK_SHIFT, 20);
+
+            robot.mouseMove(MouseInfo.getPointerInfo().getLocation().x,
+                    MouseInfo.getPointerInfo().getLocation().y);
+
+            Toolkit.getDefaultToolkit();
+            MouseInfo.getPointerInfo();
+
+            new Thread(() -> {
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException ignored) {
                 }
+            }).start();
+
+        } catch (Exception ignored) {
+        }
+    }
+
+    protected void metodThreadAutoClick() {
+        if (checkThreadAutoClick) return;      // já rodando, não duplica
+        // trava ANTES do start
+
+        threadAutoClick = new Thread(() -> {
+            running = true;
+            checkThreadAutoClick = true;
+
+            try {
+                Thread.sleep(timeBeforePlay);
+                if(antiAFK) {
+                    Thread.sleep(5000);
+                }
+                for (int i = 0; i < repetitions && running; i++) {
+
+                    // Press (LOCK CURTO)
+                    synchronized (robotLock) {
+                        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+                    }
+
+                    // fora do lock
+                    Thread.sleep(clickSpeed);
+
+                    // Release (LOCK CURTO)
+                    synchronized (robotLock) {
+                        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+                    }
+
+                    // janela pro teclado entrar no meio dos clicks
+                    Thread.sleep(2);
+                }
+
+            } catch (InterruptedException ignored) {
+            } finally {
+                running = false;
+                checkThreadAutoClick = false;
+                checkPlayButtonAutoClick = false;
             }
         });
-        if(!checkThreadAutoClick) {threadAutoClick.start();}
+
+        threadAutoClick.start();
+    }
+
+    protected void metodThreadMove() {
+        if (checkThreadMove) return;           // já rodando, não duplica
+        checkThreadMove = true;                // trava ANTES do start
+
+        threadMove = new Thread(() -> {
+            try {
+                Thread.sleep(timeBeforePlay);
+
+                while (antiAFK && running) {
+                    // preciona e solta uma tecla automaticamente (140 -> tempo que fica precionada)
+                    tapKey(KeyEvent.VK_W, 140);
+                    Thread.sleep(450);
+
+                    tapKey(KeyEvent.VK_S, 140);
+                    Thread.sleep(450);
+
+                    tapKey(KeyEvent.VK_SPACE, 50);
+                    Thread.sleep(pauseMove);
+                }
+
+            } catch (InterruptedException ignored) {
+            } finally {
+                // evita tecla presa se parar no meio
+                safeRelease(KeyEvent.VK_W);
+                safeRelease(KeyEvent.VK_S);
+                safeRelease(KeyEvent.VK_SPACE);
+
+                checkThreadMove = false;
+            }
+        });
+
+        threadMove.start();
+    }
+
+    // =========================
+    // Stop (recomendado)
+    // =========================
+    protected void stopAutoClick() {
+        checkThreadAutoClick = false;
+        checkPlayButtonAutoClick = false;
+        checkThreadMove = false;
+        running = false;
+        if (threadAutoClick != null) threadAutoClick.interrupt();
+        if (threadMove != null) threadMove.interrupt();
+    }
+
+    // =========================
+    // Helpers (micro-lock no Robot)
+    // =========================
+    private void tapKey(int keyCode, int holdMs) throws InterruptedException {
+        if (!checkThreadMove) return;
+
+        synchronized (robotLock) {
+            robot.keyPress(keyCode);
+        }
+
+        Thread.sleep(holdMs);
+
+        synchronized (robotLock) {
+            robot.keyRelease(keyCode);
+        }
+    }
+
+    private void safeRelease(int keyCode) {
+        synchronized (robotLock) {
+            robot.keyRelease(keyCode);
+        }
     }
 
     @Override
     public void start(Stage stage) {
+        StackPane loadingOverlay = new StackPane();
+        loadingOverlay.setVisible(false);
+        loadingOverlay.setManaged(false);
+        loadingOverlay.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        loadingOverlay.setStyle("-fx-background-color: #08000F;");
+
+        Image loadingGif = new Image(getClass().getResource("/imagens/loading.gif").toExternalForm());
+        ImageView gifView = new ImageView(loadingGif);
+        gifView.setFitWidth(120);
+        // serve pra nao deformar o gif
+        gifView.setPreserveRatio(true);
+        Label loadingLabel = new Label("Look behind you...");
+        loadingLabel.getStyleClass().add("label-loading");
+        // container vertical
+        VBox box = new VBox();
+        box.setAlignment(Pos.CENTER);
+        box.setSpacing(10);
+
+        box.getChildren().addAll(gifView, loadingLabel);
+
+        // adiciona no overlay
+        loadingOverlay.getChildren().add(box);
+
+        loadingOverlay.setVisible(true);
+        // O layout considera ele
+        loadingOverlay.setManaged(true);
+
+        warmUp();
+
+        Media LaughMedia = new Media(getClass().getResource("/Laugh.mp3").toExternalForm());
+        MediaPlayer player = new MediaPlayer(LaughMedia);
+
+        player.play();
+
+        player.setOnEndOfMedia(player::dispose);
+
+        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(4));
+        pauseTransition.setOnFinished(event -> {
+            loadingOverlay.setVisible(false);
+            loadingOverlay.setManaged(false);
+        });
+        pauseTransition.play();
+
         music = new Music();
         music.start();
+        music.pause();
 
         try {
             GlobalScreen.registerNativeHook();
@@ -108,6 +270,7 @@ public class Main extends Application {
 
            // encerra a javafx
            javafx.application.Platform.exit();
+           music.pause();
            // garante que tudo feche mesmo
            System.exit(0);
         });
@@ -127,6 +290,11 @@ public class Main extends Application {
         ImageView namesIconView = new ImageView(namesIcon);
         namesIconView.setFitHeight(15);
         namesIconView.setFitWidth(15);
+
+        Image namesOpenIcon = new Image(getClass().getResource("/imagens/names_open.png").toExternalForm());
+        ImageView namesOpenIconView = new ImageView(namesOpenIcon);
+        namesOpenIconView.setFitHeight(15);
+        namesOpenIconView.setFitWidth(15);
 
         Image playIcon = new Image(getClass().getResource("/imagens/play.png").toExternalForm());
         ImageView playIconView = new ImageView(playIcon);
@@ -178,11 +346,56 @@ public class Main extends Application {
         muteMusicIconView.setFitWidth(15);
         muteMusicIconView.setFitHeight(15);
 
-        Button configButton = new Button();
-        configButton.setGraphic(configIconView);
-        configButton.getStyleClass().add("etc");
+        Button configSkeletonButton = new Button();
+        configSkeletonButton.setGraphic(configIconView);
+        configSkeletonButton.getStyleClass().add("etc");
 
-        configButton.pressedProperty().addListener((obs, oldVal, pressed) -> {
+        VBox configSkeletonVBox = new VBox();
+        configSkeletonVBox.setSpacing(8);
+        configSkeletonVBox.setAlignment(Pos.TOP_CENTER);
+        configSkeletonVBox.getStyleClass().add("configSkeletonVBox");
+        configSkeletonVBox.setPadding(new Insets(4, 7, 7, 4));
+
+        Label title = new Label("AntiAFK Config");
+        title.getStyleClass().add("title");
+        title.setPadding(new Insets(5, 7, 7, 5));
+        title.setMinHeight(50);
+        title.setPrefHeight(50);
+        title.setMaxHeight(50);
+
+        title.setMinWidth(400);
+        title.setPrefWidth(40);
+        title.setMaxWidth(40);
+        title.setAlignment(Pos.CENTER);
+
+        GridPane configSkeletonGridPane = new GridPane();
+        configSkeletonGridPane.setMinSize(400, 80);
+        configSkeletonGridPane.setPrefSize(400, 80);
+        configSkeletonGridPane.setMaxSize(400, 80);
+        configSkeletonGridPane.setVgap(8);
+        configSkeletonGridPane.setHgap(8);
+
+        configSkeletonGridPane.getStyleClass().add("GridPane-all");
+
+        Label configTimePauseMoveLabel = new Label("Delay before moving (seconds)");
+        GridPane.setMargin(configTimePauseMoveLabel, new Insets(9,0,0,10));
+        configTimePauseMoveLabel.getStyleClass().add("label-all");
+
+        Spinner<Integer> configTimePauseMoveSpinner = new Spinner<>(0,999999999,10);
+        configTimePauseMoveSpinner.setMaxSize(80,35);
+        GridPane.setMargin(configTimePauseMoveSpinner, new Insets(10,0,0,0));
+
+        configTimePauseMoveSpinner.setEditable(true);
+        configTimePauseMoveSpinner.valueProperty().addListener((ov, oldValue, newValue) -> {
+            pauseMove = newValue * 1000;
+        });
+
+        configSkeletonGridPane.add(configTimePauseMoveLabel, 0, 0);
+        configSkeletonGridPane.add(configTimePauseMoveSpinner, 1, 0);
+
+        configSkeletonVBox.getChildren().addAll(title,configSkeletonGridPane);
+
+        configSkeletonButton.pressedProperty().addListener((obs, oldVal, pressed) -> {
             if (pressed) {
                 configIconView.setScaleX(0.9);
                 configIconView.setScaleY(0.9);
@@ -192,19 +405,33 @@ public class Main extends Application {
             }
         });
 
+        CustomMenuItem configMenuItem = new CustomMenuItem(configSkeletonVBox, false);
+        ContextMenu configContextMenu = new ContextMenu(configMenuItem);
+
+
+        configSkeletonButton.setOnAction(e -> {
+            if(configContextMenu.isShowing()) {
+                configContextMenu.hide();
+            } else {
+                configContextMenu.show(configSkeletonButton, Side.BOTTOM, -405, 5);
+            }
+        });
+
         HBox configHBox = new HBox();
         configHBox.setPadding(new Insets(8,0,0,3));
         configHBox.setPickOnBounds(false);
 
         configHBox.setAlignment(Pos.TOP_LEFT);
 
-        configHBox.getChildren().add(configButton);
+        configHBox.getChildren().add(configSkeletonButton);
 
         Button namesButton = new Button();
         namesButton.setGraphic(namesIconView);
         namesButton.getStyleClass().add("button-all");
 
-        Label namesLabel = new Label("Vanished (Slowed) by mkl\nPure Imagination Orchestra by Adonal Michel");
+        Label namesLabel = new Label("> Vanished (Slowed) by mkl\n> Pure Imagination Orchestra by Adonal Michel");
+        namesLabel.setAlignment(Pos.TOP_LEFT);
+        namesLabel.setPadding(new Insets(4, 7, 7, 4));
 
         CustomMenuItem namesItem = new CustomMenuItem(namesLabel, false);
         ContextMenu namesResult = new ContextMenu(namesItem);
@@ -213,7 +440,9 @@ public class Main extends Application {
         namesButton.setOnAction(e -> {
             if(namesResult.isShowing()) {
                 namesResult.hide();
+                namesButton.setGraphic(namesIconView);
             } else {
+                namesButton.setGraphic(namesOpenIconView);
                 namesResult.show(namesButton, Side.BOTTOM, 0,0);
             }
         });
@@ -247,17 +476,17 @@ public class Main extends Application {
         });
 
         Button playAndStopButton = new Button();
-        playAndStopButton.setGraphic(stopIconView);
+        playAndStopButton.setGraphic(playIconView);
         playAndStopButton.setOnAction(e -> {
-            if (playMusic) {
-                playAndStopButton.setGraphic(playIconView);
-                playMusic = false;
-                music.pause();
-            }
-            else {
+            if (!playMusic) {
                 playAndStopButton.setGraphic(stopIconView);
                 playMusic = true;
                 music.play();
+            }
+            else {
+                playAndStopButton.setGraphic(playIconView);
+                playMusic = false;
+                music.pause();
             }
         });
         playAndStopButton.getStyleClass().add("button-all");
@@ -266,8 +495,8 @@ public class Main extends Application {
         volumeBtn.setGraphic(volumMedianIconView);
         volumeBtn.getStyleClass().add("button-all");
 
-        Slider volumeSlider = new Slider(0,1,0.2);
-        music.volume(0.2);
+        Slider volumeSlider = new Slider(0,1,0.5);
+        music.volume(0.5);
         volumeSlider.setFocusTraversable(false);
         volumeSlider.setPrefWidth(110);
 
@@ -276,12 +505,12 @@ public class Main extends Application {
             if(newV != null){
                 music.volume(newV);
             } else {
-                music.volume(0.2);
+                music.volume(0.5);
             }
-            if(newV.doubleValue() > 0.5 && newV != null) {volumeBtn.setGraphic(volumMaxIconView);}
-            if(newV.doubleValue() < 0.5 && newV.doubleValue() > 0.2 && newV != null) {volumeBtn.setGraphic(volumMedianIconView);}
-            if(newV.doubleValue() < 0.2 && newV.doubleValue() > 0.0 && newV != null) {volumeBtn.setGraphic(volumLowIconView);}
-            if(newV.doubleValue() == 0.0 && newV != null) {volumeBtn.setGraphic(muteMusicIconView);}
+            if(newV.doubleValue() > 0.5) {volumeBtn.setGraphic(volumMaxIconView);}
+            if(newV.doubleValue() < 0.5 && newV.doubleValue() > 0.2) {volumeBtn.setGraphic(volumMedianIconView);}
+            if(newV.doubleValue() < 0.2 && newV.doubleValue() > 0.0) {volumeBtn.setGraphic(volumLowIconView);}
+            if(newV.doubleValue() == 0.0) {volumeBtn.setGraphic(muteMusicIconView);}
         });
 
         CustomMenuItem sliderItem = new CustomMenuItem(volumeSlider, false);
@@ -336,7 +565,6 @@ public class Main extends Application {
         });
 
         GlobalScreen.addNativeKeyListener(new NativeKeyListener() {
-
             @Override
             public void nativeKeyPressed(NativeKeyEvent event) {
                 if (event.getKeyCode() != keyCode) return;
@@ -345,14 +573,14 @@ public class Main extends Application {
                 if (hotkeyDown) return;
                 hotkeyDown = true;
 
-                if (checkThreadAutoClick) {
-                    checkThreadAutoClick = false;
-                    checkPlayButtonAutoClick = false;
-                    running = false;
-                    if (threadAutoClick != null) threadAutoClick.interrupt();
+                if (checkThreadAutoClick || checkPlayButtonAutoClick) {
+                    stopAutoClick();
                 } else {
                     if (!checkPlayButtonAutoClick) {
                         metodThreadAutoClick();
+                        if(antiAFK){
+                            metodThreadMove();
+                        }
                     }
                 }
             }
@@ -370,22 +598,24 @@ public class Main extends Application {
         playAutoClickButton.setPrefWidth(200);
         playAutoClickButton.getStyleClass().add("button-all");
         playAutoClickButton.setOnAction(event -> {
+            checkPlayButtonAutoClick = true;
             metodThreadAutoClick();
+            if(antiAFK){
+                metodThreadMove();
+            }
+
         });
 
         Button stopAutoClickButton = new Button("Stop AutoClick");
         stopAutoClickButton.getStyleClass().add("button-all");
         stopAutoClickButton.setOnAction(event -> {
-            running = false;
-            checkThreadAutoClick = false;
-            checkPlayButtonAutoClick = false;
-            threadAutoClick.interrupt();
+            stopAutoClick();
         });
 
         GridPane configGridPane = new GridPane();
         configGridPane.setAlignment(Pos.CENTER);
-        configGridPane.setPrefSize(500, 100);
-        configGridPane.setMaxSize(500, 100);
+        configGridPane.setPrefSize(525, 148);
+        configGridPane.setMaxSize(525, 148);
         configGridPane.setVgap(8);
         configGridPane.setHgap(20);
         configGridPane.getStyleClass().add("GridPane-all");
@@ -394,7 +624,7 @@ public class Main extends Application {
         repetitionsLabel.getStyleClass().add("label-all");
 
         // cria um bloco com seta pra aumentar e diminuir os numeros
-        Spinner<Integer> repetitionsSpinner = new Spinner<>(0, 999999999, 1000);
+        Spinner<Integer> repetitionsSpinner = new Spinner<>(0, 999999999, 5000);
         // permite ser editavel
         repetitionsSpinner.setEditable(true);
         repetitionsSpinner.valueProperty().addListener((observable, oldValue, newValue) -> {
@@ -410,19 +640,38 @@ public class Main extends Application {
             timeBeforePlay = newValue * 1000;
         });
 
+        Label clickSpeedLabel = new Label("Time of pause between clicks (milliseconds):");
+        clickSpeedLabel.getStyleClass().add("label-all");
+
+        Spinner<Integer> clickSpeedSpinner = new Spinner<>(0, 999999999, 6);
+        clickSpeedSpinner.setEditable(true);
+        clickSpeedSpinner.valueProperty().addListener((observable, oldValue, newValue) -> {
+            clickSpeed = newValue;
+        });
+
+        RadioButton antiAFKButton = new RadioButton("AntiAFK");
+        antiAFKButton.getStyleClass().add("antiAFK");
+        antiAFKButton.setMaxHeight(20);
+        antiAFKButton.setOnAction(event -> {
+            antiAFK = antiAFKButton.isSelected();
+        });
+
         configGridPane.add(repetitionsLabel, 0, 0);
         configGridPane.add(repetitionsSpinner, 1, 0);
-        configGridPane.add(timeBeforePlayLabel, 0, 1);
-        configGridPane.add(timeBeforePlaySpinner, 1, 1);
+        configGridPane.add(clickSpeedLabel, 0, 1);
+        configGridPane.add(clickSpeedSpinner, 1, 1);
+        configGridPane.add(timeBeforePlayLabel, 0, 2);
+        configGridPane.add(timeBeforePlaySpinner, 1, 2);
+        configGridPane.add(antiAFKButton, 0, 3);
 
-        rootStackPane.getChildren().addAll(centerVBOX, configHBox, soundHBox);
+        // Adiciona os botoes
+        centerVBOX.getChildren().addAll(setKeyButton, playAutoClickButton, stopAutoClickButton, configGridPane);
+
+        rootStackPane.getChildren().addAll(centerVBOX, configHBox, soundHBox,loadingOverlay);
         // scene -> conteudo de dentro da janela, guarda toda a arvore visual
         // Scene(centerVBOX, 400, 400) - > define layout e tamanho
         Scene scene = new Scene(rootStackPane, 550, 550);
 
-
-        // Adiciona os botoes
-        centerVBOX.getChildren().addAll(setKeyButton, playAutoClickButton, stopAutoClickButton, configGridPane);
         // Difine o arquivo css que ditara o estilo e as configuracoes da janela principal
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
 
@@ -441,8 +690,6 @@ public class Main extends Application {
         stage.centerOnScreen();
         // mostra a janela
         stage.show();
-
-        music.play();
 
         // deixa o JavaFX + WM assentarem tamanho/decoração
         // espera 20 ms
@@ -463,6 +710,7 @@ public class Main extends Application {
     public static void main(String[] args) {
         try{
             robot = new Robot();
+            robotMove = new Robot();
         } catch (AWTException e){
             e.printStackTrace();
         }
@@ -527,7 +775,7 @@ class Music {
         index = (index + 1) % playlist.size();
         playIndex(index);
         if(Main.newVolum != null) {volume(Main.newVolum);}
-        else {volume(0.2);}
+        else {volume(0.5);}
     }
     public void returnMusic() {
         if (playlist == null || playlist.isEmpty()) return;
@@ -536,7 +784,7 @@ class Music {
         if(index < 0) index = 0;
         playIndex(index);
         if(Main.newVolum != null) {volume(Main.newVolum);}
-        else {volume(0.2);}
+        else {volume(0.5);}
     }
     protected void return10s() {
         if (playlist == null || playlist.isEmpty()) return;

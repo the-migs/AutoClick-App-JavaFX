@@ -1,4 +1,50 @@
+.title{
+    -fx-text-fill: #9333ea;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-background-color: rgba(0, 0, 0, 0.7);
+}
 
+.configTimePauseMoveSpinner{
+    -fx-padding: 10 0 0 0;
+}
+
+.configSkeletonVBox{
+    -fx-background-color: transparent;
+    -fx-min-width: 420px;
+    -fx-min-height: 370px;
+    -fx-pref-width: 420px;
+    -fx-pref-height: 370px;
+    -fx-max-height: 370px;
+    -fx-max-width: 420px;
+    -fx-border-color: black;
+    -fx-border-width: 3px;
+}
+
+.configSkeletonVBox .label{
+    -fx-text-fill: #9333ea;
+
+}
+
+.antiAFK{
+    -fx-text-fill: #9333ea;
+    -fx-font-size: 12px;
+}
+.antiAFK .radio{
+    -fx-pref-width: 12px;
+    -fx-pref-height: 12px;
+    -fx-max-height: 12px;
+    -fx-max-width: 12px;
+}
+.radio-button:selected .dot {
+    -fx-padding: 3px;
+}
+
+.label-loading{
+    -fx-text-fill: #9333ea;
+    -fx-font-weight: bold;
+    -fx-font-size: 15px;
+}
 
 .context-menu {
     -fx-background-color: transparent;
@@ -76,23 +122,24 @@
 }
 
 .names-menu {
-    -fx-background-color: #3a3a3a;
+    -fx-background-color: rgba(0, 0, 0, 0.7);
     -fx-border-color: #6b6b6b;
-    -fx-padding: 4;
+    -fx-padding: 0;
 }
 
 .names-menu .menu-item,
 .names-menu .custom-menu-item {
-    -fx-background-color: #3a3a3a;
+    -fx-background-color: rgba(0, 0, 0, 0.7);
 }
 
 .names-menu .menu-item:hover,
 .names-menu .menu-item:focused,
 .names-menu .custom-menu-item:hover,
 .names-menu .custom-menu-item:focused {
-    -fx-background-color: #3a3a3a;
+    -fx-background-color: rgba(0, 0, 0, 0.7);
 }
 
 .names-menu .label {
-    -fx-text-fill: #9333ea; /* roxo */
+    -fx-text-fill: #9333ea;
+    -fx-font-weight: bold;
 }
