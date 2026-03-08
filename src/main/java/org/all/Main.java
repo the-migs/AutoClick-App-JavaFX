@@ -1,5 +1,6 @@
 package org.all;
 
+import javafx.scene.control.CheckBox;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -49,7 +50,18 @@ public class Main extends Application {
     private static volatile int timeBeforePlay = 0;
     private static volatile int clickSpeed = 6;
     private static volatile boolean antiAFK = false;
+
+    private static volatile boolean keyACheck = false;
+    private static volatile boolean keyDCheck = false;
+    private static volatile boolean keyShiftCheck = false;
+    private static volatile boolean keyControlCheck = false;
+
+    private static volatile boolean keyWCheck = true;
+    private static volatile boolean keySCheck = true;
+    private static volatile boolean keySpaceCheck = true;
+
     private static volatile int pauseMove = 10000;
+    private static volatile int pauseBetweenKeys = 3000;
 
     private static Robot robot;
     private static Robot robotMove;
@@ -137,14 +149,42 @@ public class Main extends Application {
                 Thread.sleep(timeBeforePlay);
 
                 while (antiAFK && running) {
-                    // preciona e solta uma tecla automaticamente (140 -> tempo que fica precionada)
-                    tapKey(KeyEvent.VK_W, 140);
-                    Thread.sleep(450);
+                    if(keyWCheck) {
+                        // preciona e solta uma tecla automaticamente (140 -> tempo que fica precionada)
+                        tapKey(KeyEvent.VK_W, 120);
+                        Thread.sleep(pauseBetweenKeys);
+                    }
 
-                    tapKey(KeyEvent.VK_S, 140);
-                    Thread.sleep(450);
+                    if(keySCheck) {
+                        tapKey(KeyEvent.VK_S, 120);
+                        Thread.sleep(pauseBetweenKeys);
+                    }
 
-                    tapKey(KeyEvent.VK_SPACE, 50);
+                    if(keySpaceCheck) {
+                        tapKey(KeyEvent.VK_SPACE, 50);
+                        Thread.sleep(pauseBetweenKeys);
+                    }
+
+                    if(keyACheck) {
+                        tapKey(KeyEvent.VK_A, 120);
+                        Thread.sleep(pauseBetweenKeys);
+                    }
+
+                    if(keyDCheck) {
+                        tapKey(KeyEvent.VK_D, 120);
+                        Thread.sleep(pauseBetweenKeys);
+                    }
+
+                    if(keyShiftCheck) {
+                        tapKey(KeyEvent.VK_SHIFT, 50);
+                        Thread.sleep(pauseBetweenKeys);
+                    }
+
+                    if(keyControlCheck) {
+                        tapKey(KeyEvent.VK_CONTROL, 50);
+                        Thread.sleep(pauseBetweenKeys);
+                    }
+
                     Thread.sleep(pauseMove);
                 }
 
@@ -219,8 +259,14 @@ public class Main extends Application {
 
         box.getChildren().addAll(gifView, loadingLabel);
 
+        VBox loadingContainerLogs = new VBox();
+        loadingContainerLogs.setStyle("-fx-text-fill: white;");
+        loadingContainerLogs.setAlignment(Pos.TOP_LEFT);
+        loadingContainerLogs.setPadding(new Insets(10,0,0,10));
+
+
         // adiciona no overlay
-        loadingOverlay.getChildren().add(box);
+        loadingOverlay.getChildren().addAll(box, loadingContainerLogs);
 
         loadingOverlay.setVisible(true);
         // O layout considera ele
@@ -235,7 +281,119 @@ public class Main extends Application {
 
         player.setOnEndOfMedia(player::dispose);
 
-        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(4));
+        HBox line1 = new HBox();
+        HBox line2 = new HBox();
+        HBox line3 = new HBox();
+        HBox line4 = new HBox();
+        HBox line5 = new HBox();
+        HBox line6 = new HBox();
+        HBox line7 = new HBox();
+        HBox line8 = new HBox();
+
+        Label text1 = new Label(" Loading tasks for the slaves (mini dwarves)");
+        text1.setStyle("-fx-text-fill: white;");
+        Label text2 = new Label(" Assigning tasks");
+        text2.setStyle("-fx-text-fill: white;");
+        Label text3 = new Label(" Building structure");
+        text3.setStyle("-fx-text-fill: white;");
+        Label text4 = new Label(" Building images");
+        text4.setStyle("-fx-text-fill: white;");
+        Label text5 = new Label(" Building buttons");
+        text5.setStyle("-fx-text-fill: white;");
+        Label text6 = new Label(" Making the dwarves create the music");
+        text6.setStyle("-fx-text-fill: white;");
+        Label text7 = new Label(" Sending dwarves back to base");
+        text7.setStyle("-fx-text-fill: white;");
+        Label text8 = new Label(" Initializing...");
+        text8.setStyle("-fx-text-fill: white;");
+
+
+        Label a1 = new Label("["); a1.setStyle("-fx-text-fill: white;");
+        Label b1 = new Label("OK"); b1.setStyle("-fx-text-fill: lime;");
+        Label c1 = new Label("]"); c1.setStyle("-fx-text-fill: white;");
+        line1.getChildren().addAll(a1,b1,c1,text1);
+
+        Label a2 = new Label("["); a2.setStyle("-fx-text-fill: white;");
+        Label b2 = new Label("OK"); b2.setStyle("-fx-text-fill: lime;");
+        Label c2 = new Label("]"); c2.setStyle("-fx-text-fill: white;");
+        line2.getChildren().addAll(a2,b2,c2,text2);
+
+        Label a3 = new Label("["); a3.setStyle("-fx-text-fill: white;");
+        Label b3 = new Label("OK"); b3.setStyle("-fx-text-fill: lime;");
+        Label c3 = new Label("]"); c3.setStyle("-fx-text-fill: white;");
+        line3.getChildren().addAll(a3,b3,c3,text3);
+
+        Label a4 = new Label("["); a4.setStyle("-fx-text-fill: white;");
+        Label b4 = new Label("OK"); b4.setStyle("-fx-text-fill: lime;");
+        Label c4 = new Label("]"); c4.setStyle("-fx-text-fill: white;");
+        line4.getChildren().addAll(a4,b4,c4,text4);
+
+        Label a5 = new Label("["); a5.setStyle("-fx-text-fill: white;");
+        Label b5 = new Label("OK"); b5.setStyle("-fx-text-fill: lime;");
+        Label c5 = new Label("]"); c5.setStyle("-fx-text-fill: white;");
+        line5.getChildren().addAll(a5,b5,c5,text5);
+
+        Label a6 = new Label("["); a6.setStyle("-fx-text-fill: white;");
+        Label b6 = new Label("OK"); b6.setStyle("-fx-text-fill: lime;");
+        Label c6 = new Label("]"); c6.setStyle("-fx-text-fill: white;");
+        line6.getChildren().addAll(a6,b6,c6,text6);
+
+        Label a7 = new Label("["); a7.setStyle("-fx-text-fill: white;");
+        Label b7 = new Label("OK"); b7.setStyle("-fx-text-fill: lime;");
+        Label c7 = new Label("]"); c7.setStyle("-fx-text-fill: white;");
+        line7.getChildren().addAll(a7,b7,c7,text7);
+
+        Label a8 = new Label("["); a8.setStyle("-fx-text-fill: white;");
+        Label b8 = new Label("OK"); b8.setStyle("-fx-text-fill: lime;");
+        Label c8 = new Label("]"); c8.setStyle("-fx-text-fill: white;");
+        line8.getChildren().addAll(a8,b8,c8,text8);
+
+
+        line1.setVisible(false);
+        line2.setVisible(false);
+        line3.setVisible(false);
+        line4.setVisible(false);
+        line5.setVisible(false);
+        line6.setVisible(false);
+        line7.setVisible(false);
+        line8.setVisible(false);
+
+
+        loadingContainerLogs.getChildren().addAll(
+                line1,line2,line3,line4,line5,line6,line7, line8
+        );
+
+
+        PauseTransition p1 = new PauseTransition(Duration.millis(550));
+        PauseTransition p2 = new PauseTransition(Duration.millis(1100));
+        PauseTransition p3 = new PauseTransition(Duration.millis(1600));
+        PauseTransition p4 = new PauseTransition(Duration.millis(2200));
+        PauseTransition p5 = new PauseTransition(Duration.millis(2700));
+        PauseTransition p6 = new PauseTransition(Duration.millis(3200));
+        PauseTransition p7 = new PauseTransition(Duration.millis(3700));
+        PauseTransition p8 = new PauseTransition(Duration.millis(4200));
+
+
+        p1.setOnFinished(e -> line1.setVisible(true));
+        p2.setOnFinished(e -> line2.setVisible(true));
+        p3.setOnFinished(e -> line3.setVisible(true));
+        p4.setOnFinished(e -> line4.setVisible(true));
+        p5.setOnFinished(e -> line5.setVisible(true));
+        p6.setOnFinished(e -> line6.setVisible(true));
+        p7.setOnFinished(e -> line7.setVisible(true));
+        p8.setOnFinished(e -> line8.setVisible(true));
+
+
+        p1.play();
+        p2.play();
+        p3.play();
+        p4.play();
+        p5.play();
+        p6.play();
+        p7.play();
+        p8.play();
+
+        PauseTransition pauseTransition = new PauseTransition(Duration.seconds(5));
         pauseTransition.setOnFinished(event -> {
             loadingOverlay.setVisible(false);
             loadingOverlay.setManaged(false);
@@ -369,29 +527,114 @@ public class Main extends Application {
         title.setAlignment(Pos.CENTER);
 
         GridPane configSkeletonGridPane = new GridPane();
-        configSkeletonGridPane.setMinSize(400, 80);
-        configSkeletonGridPane.setPrefSize(400, 80);
-        configSkeletonGridPane.setMaxSize(400, 80);
+        configSkeletonGridPane.setMinSize(400, 297);
+        configSkeletonGridPane.setPrefSize(400, 297);
+        configSkeletonGridPane.setMaxSize(400, 297);
         configSkeletonGridPane.setVgap(8);
         configSkeletonGridPane.setHgap(8);
 
         configSkeletonGridPane.getStyleClass().add("GridPane-all");
 
-        Label configTimePauseMoveLabel = new Label("Delay before moving (seconds)");
+        Label configTimePauseMoveLabel = new Label("Pause between movements (seconds)");
         GridPane.setMargin(configTimePauseMoveLabel, new Insets(9,0,0,10));
         configTimePauseMoveLabel.getStyleClass().add("label-all");
 
         Spinner<Integer> configTimePauseMoveSpinner = new Spinner<>(0,999999999,10);
         configTimePauseMoveSpinner.setMaxSize(80,35);
         GridPane.setMargin(configTimePauseMoveSpinner, new Insets(10,0,0,0));
-
         configTimePauseMoveSpinner.setEditable(true);
+
         configTimePauseMoveSpinner.valueProperty().addListener((ov, oldValue, newValue) -> {
             pauseMove = newValue * 1000;
         });
 
-        configSkeletonGridPane.add(configTimePauseMoveLabel, 0, 0);
-        configSkeletonGridPane.add(configTimePauseMoveSpinner, 1, 0);
+        Label configTimePauseBetweenKeysLabel = new Label("Delay between key presses (milliseconds)");
+        GridPane.setMargin(configTimePauseBetweenKeysLabel, new Insets(9,0,0,10));
+        configTimePauseBetweenKeysLabel.getStyleClass().add("label-all");
+
+        Spinner<Integer> configTimePauseBetweenKeysSpinner = new Spinner<>(0,999999999,3000);
+        configTimePauseBetweenKeysSpinner.setMaxSize(80,35);
+        GridPane.setMargin(configTimePauseBetweenKeysSpinner, new Insets(10,0,0,0));
+        configTimePauseBetweenKeysSpinner.setEditable(true);
+
+        configTimePauseBetweenKeysSpinner.valueProperty().addListener((ov, oldValue, newValue) -> {
+            pauseBetweenKeys = newValue;
+        });
+
+        CheckBox keyCheckWBox = new CheckBox("Key W");
+        keyCheckWBox.getStyleClass().add("label-all");
+        keyCheckWBox.setStyle("-fx-underline: false;");
+        GridPane.setMargin(keyCheckWBox, new Insets(10,0,0,10));
+        keyCheckWBox.setSelected(true);
+
+        keyCheckWBox.setOnAction(event -> {
+            keyWCheck = keyCheckWBox.isSelected();
+        });
+
+        CheckBox keyCheckSBox = new CheckBox("Key S");
+        keyCheckSBox.getStyleClass().add("label-all");
+        keyCheckSBox.setStyle("-fx-underline: false;");
+        GridPane.setMargin(keyCheckSBox, new Insets(0,0,0,10));
+        keyCheckSBox.setSelected(true);
+
+        keyCheckSBox.setOnAction(event -> {
+            keySCheck = keyCheckSBox.isSelected();
+        });
+
+        CheckBox keyCheckSpaceBox = new CheckBox("Key Space");
+        keyCheckSpaceBox.getStyleClass().add("label-all");
+        keyCheckSpaceBox.setStyle("-fx-underline: false;");
+        GridPane.setMargin(keyCheckSpaceBox, new Insets(0,0,0,10));
+        keyCheckSpaceBox.setSelected(true);
+
+        keyCheckSpaceBox.setOnAction(event -> {
+            keySpaceCheck = keyCheckSpaceBox.isSelected();
+        });
+
+        CheckBox keyCheckABox = new CheckBox("Key A");
+        keyCheckABox.getStyleClass().add("label-all");
+        keyCheckABox.setStyle("-fx-underline: false;");
+        GridPane.setMargin(keyCheckABox, new Insets(0,0,0,10));
+
+        keyCheckABox.setOnAction(event -> {
+            keyACheck = keyCheckABox.isSelected();
+        });
+
+        CheckBox keyCheckDBox = new CheckBox("Key D");
+        keyCheckDBox.getStyleClass().add("label-all");
+        keyCheckDBox.setStyle("-fx-underline: false;");
+        GridPane.setMargin(keyCheckDBox, new Insets(0,0,0,10));
+        keyCheckDBox.setOnAction(event -> {
+            keyDCheck = keyCheckDBox.isSelected();
+        });
+
+        CheckBox keyCheckShiftBox = new CheckBox("Key Shift");
+        keyCheckShiftBox.getStyleClass().add("label-all");
+        keyCheckShiftBox.setStyle("-fx-underline: false;");
+        GridPane.setMargin(keyCheckShiftBox, new Insets(0,0,0,10));
+        keyCheckShiftBox.setOnAction(event -> {
+            keyShiftCheck = keyCheckShiftBox.isSelected();
+        });
+
+        CheckBox keyCheckControlBox = new CheckBox("Key Control");
+        keyCheckControlBox.getStyleClass().add("label-all");
+        keyCheckControlBox.setStyle("-fx-underline: false;");
+        GridPane.setMargin(keyCheckControlBox, new Insets(0,0,0,10));
+        keyCheckControlBox.setOnAction(event -> {
+            keyControlCheck = keyCheckControlBox.isSelected();
+        });
+
+        configSkeletonGridPane.add(configTimePauseBetweenKeysLabel, 0, 0);
+        configSkeletonGridPane.add(configTimePauseBetweenKeysSpinner, 1, 0);
+        configSkeletonGridPane.add(configTimePauseMoveLabel, 0, 1);
+        configSkeletonGridPane.add(configTimePauseMoveSpinner, 1, 1);
+        configSkeletonGridPane.add(keyCheckWBox, 0, 2);
+        configSkeletonGridPane.add(keyCheckSBox, 0, 3);
+        configSkeletonGridPane.add(keyCheckSpaceBox, 0, 4);
+        configSkeletonGridPane.add(keyCheckABox, 0, 5);
+        configSkeletonGridPane.add(keyCheckDBox, 0, 6);
+        configSkeletonGridPane.add(keyCheckShiftBox, 0, 7);
+        configSkeletonGridPane.add(keyCheckControlBox, 0, 8);
 
         configSkeletonVBox.getChildren().addAll(title,configSkeletonGridPane);
 
@@ -525,18 +768,19 @@ public class Main extends Application {
         });
 
         soundHBox.getChildren().addAll(namesButton,returnButton, return10sButton, playAndStopButton, skip10sButton, skipButton, volumeBtn);
-        // Layout e container
-        VBox centerVBOX = new VBox();
 
         StackPane rootStackPane = new StackPane();
-        StackPane.setAlignment(rootStackPane, Pos.TOP_CENTER);
         soundHBox.setAlignment(Pos.TOP_CENTER);
+
+        // Layout e container
+        VBox centerVBOX = new VBox();
 
         // deixa os componentes no centro
         centerVBOX.setAlignment(Pos.CENTER);
         //espacamento entre os componentes
         centerVBOX.setSpacing(20);
         Button setKeyButton = new Button("Set Key: F6");
+        VBox.setMargin(setKeyButton, new Insets(60,0,0,0));
         // define o estilo do botao com base na classe CSS
         setKeyButton.getStyleClass().add("button-all");
 
@@ -613,9 +857,10 @@ public class Main extends Application {
         });
 
         GridPane configGridPane = new GridPane();
+        configGridPane.setPadding(new Insets(10, 10, 10, 10));
         configGridPane.setAlignment(Pos.CENTER);
-        configGridPane.setPrefSize(525, 148);
-        configGridPane.setMaxSize(525, 148);
+        configGridPane.setPrefSize(525, 200);
+        configGridPane.setMaxSize(525, 200);
         configGridPane.setVgap(8);
         configGridPane.setHgap(20);
         configGridPane.getStyleClass().add("GridPane-all");
@@ -656,6 +901,10 @@ public class Main extends Application {
             antiAFK = antiAFKButton.isSelected();
         });
 
+        Label antiAFKLabel = new Label("- May freeze at startup.\n- Do not press keys during AntiAFK;\n- it may cause severe lag.");
+        antiAFKLabel.getStyleClass().add("antiAFK");
+        antiAFKLabel.setStyle("-fx-font-size: 10px;");
+
         configGridPane.add(repetitionsLabel, 0, 0);
         configGridPane.add(repetitionsSpinner, 1, 0);
         configGridPane.add(clickSpeedLabel, 0, 1);
@@ -663,6 +912,7 @@ public class Main extends Application {
         configGridPane.add(timeBeforePlayLabel, 0, 2);
         configGridPane.add(timeBeforePlaySpinner, 1, 2);
         configGridPane.add(antiAFKButton, 0, 3);
+        configGridPane.add(antiAFKLabel, 0, 4);
 
         // Adiciona os botoes
         centerVBOX.getChildren().addAll(setKeyButton, playAutoClickButton, stopAutoClickButton, configGridPane);
@@ -680,6 +930,10 @@ public class Main extends Application {
         // impede que a tela seja colocada em tela cheia ou aumentada
         stage.setResizable(false);
 
+        stage.getIcons().add(new Image("/imagens/iconHome.jpg"));
+
+        stage.setTitle("Auto Click");
+
         // antes de mostrar move a tela para uma area nao visivel
         // sem isso ela aparece no canto e depois centraliza
         stage.setX(-100000);
@@ -688,6 +942,7 @@ public class Main extends Application {
         stage.setOpacity(0);
         // pre centralizacao
         stage.centerOnScreen();
+
         // mostra a janela
         stage.show();
 

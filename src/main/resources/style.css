@@ -72,6 +72,7 @@
     -fx-background-size: cover;
     -fx-background-position: center center;
     -fx-background-repeat: no-repeat;
+    -fx-font-family: 'Inter'
 }
 .etc{
     -fx-background-color: transparent;
