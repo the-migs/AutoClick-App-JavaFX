@@ -1,1 +1,1 @@
-App de AutoClick incompleto por enquanto, feito com JavaFX
+App de AutoClick completo com antiAFK, feito com JavaFX
